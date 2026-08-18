@@ -63,7 +63,6 @@
 
 - (void)dealloc { 
     self.savedSettings = nil;
-    [super dealloc];
 }
 
 - (NSString*)navigationTitle {

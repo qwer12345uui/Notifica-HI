@@ -12,9 +12,9 @@
     NSString *title = [specifier name];
 
     if ([sub isEqualToString:@"Banners"]) {
-        _specifiers = [[self loadSpecifiersFromPlistName:@"Notifications" target:self] retain];
+        _specifiers = [self loadSpecifiersFromPlistName:@"Notifications" target:self];
     } else {
-        _specifiers = [[self loadSpecifiersFromPlistName:sub target:self] retain];
+        _specifiers = [self loadSpecifiersFromPlistName:sub target:self];
     }
 
     for (PSSpecifier *specifier in _specifiers) {
