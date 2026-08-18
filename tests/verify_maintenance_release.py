@@ -39,6 +39,11 @@ def main() -> None:
     require(tweak.count('enabled = [([file objectForKey:@"Enabled"] ?: @(YES)) boolValue];') == 2,
             "SpringBoard and widget processes both use the Enabled preference")
 
+    injection_filter = read("Tweak/Notifica.plist")
+    require("com.apple.springboard" in injection_filter, "tweak is limited to SpringBoard")
+    require("com.apple.UIKit" not in injection_filter, "tweak no longer injects into all UIKit applications")
+    require("com.apple.Preferences" not in injection_filter, "tweak is not injected into Settings")
+
     for makefile in ("Tweak/Makefile", "Prefs/Makefile"):
         require("TARGET = iphone:clang:latest:15.0" in read(makefile), f"{makefile} targets iOS 15.0")
 
