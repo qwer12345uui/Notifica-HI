@@ -41,8 +41,8 @@
     }
 
     -(bool)isDistinct:(NEPColor *)color {
-        return (abs(self.r-color.r) > 63 || abs(self.g-color.g) > 63 || abs(self.b-color.b) > 63) &&
-            !(abs(self.r - self.g) < 7 && abs(self.r-self.b) < 7 && abs(color.r-color.g) < 7 && abs(color.r-color.b) < 7);
+        return (abs((int)self.r - (int)color.r) > 63 || abs((int)self.g - (int)color.g) > 63 || abs((int)self.b - (int)color.b) > 63) &&
+            !(abs((int)self.r - (int)self.g) < 7 && abs((int)self.r - (int)self.b) < 7 && abs((int)color.r - (int)color.g) < 7 && abs((int)color.r - (int)color.b) < 7);
     }
 
     -(double)lum {
