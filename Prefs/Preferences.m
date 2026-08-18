@@ -156,7 +156,6 @@
         [file setObject:[file objectForKey:key] forKey:[key stringByReplacingOccurrencesOfString:x withString:y]];
     }
 
-    [file synchronize];
 
     NSMutableDictionary *colors = [[[NSDictionary alloc] initWithContentsOfFile:COLORS_PATH] mutableCopy];
     for (NSString *key in colors) {
