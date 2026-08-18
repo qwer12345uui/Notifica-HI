@@ -4,7 +4,7 @@ MIT Licensed, original author: @jathu
 
 #import <Nepeta/NEPColor.h>
 #import <Nepeta/NEPPalette.h>
-#import <Nepeta/NEPColorUtils.h>
+#import "NEPColorUtils.h"
 
 
 @implementation NEPColorUtils

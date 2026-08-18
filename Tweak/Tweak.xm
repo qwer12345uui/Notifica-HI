@@ -1,5 +1,5 @@
 #import "Tweak.h"
-#import <Nepeta/NEPColorUtils.h>
+#import "NEPColorUtils.h"
 #import <MediaRemote/MediaRemote.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <CommonCrypto/CommonDigest.h>
@@ -2501,7 +2501,6 @@ void NTFTestBanner() {
 %end
 
 
-%end
 
 %group NotificaNotificationTest
 
