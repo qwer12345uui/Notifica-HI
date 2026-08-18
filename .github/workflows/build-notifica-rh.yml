@@ -27,7 +27,7 @@ jobs:
         run: |
           set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install -y curl git ldid make xz-utils
+          sudo apt-get install -y curl git make xz-utils
           export THEOS="${THEOS}"
           # `yes` exits on SIGPIPE when the installer finishes reading input; keep that expected exit from failing the step.
           set +o pipefail
