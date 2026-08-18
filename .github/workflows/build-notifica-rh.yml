@@ -27,12 +27,21 @@ jobs:
         run: |
           set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install -y curl git make xz-utils
+          sudo apt-get install -y curl git make unzip xz-utils
           export THEOS="${THEOS}"
           # `yes` exits on SIGPIPE when the installer finishes reading input; keep that expected exit from failing the step.
           set +o pipefail
           yes | bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"
           set -o pipefail
+
+      - name: Install Cephei SDK headers
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fsSL -o /tmp/cephei_sdk.zip \
+            https://github.com/hbang/libcephei/releases/download/2.0/cephei_sdk_2.0.zip
+          unzip -q /tmp/cephei_sdk.zip -d /tmp
+          cp -R /tmp/cephei_sdk_2.0/*.framework "${THEOS}/vendor/lib/iphone/roothide/"
 
       - name: Build RootHide package
         shell: bash
