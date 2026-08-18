@@ -25,8 +25,8 @@ The tweak customizes notifications, banners, widgets, and Now Playing controls. 
 | RootHide startup | Activation no longer depends on a rootful `/var/lib/dpkg` package-list path. The tweak now respects only its `Enabled` preference. |
 | Preference bundle | Added `CFBundleExecutable`, `NSPrincipalClass`, a stable bundle identifier, and version metadata so Settings can load the main list controller. |
 | Build configuration | Updated the deployment target to iOS 15.0 and added a manually runnable RootHide build workflow. |
-| Settings stability | Restricts tweak injection to SpringBoard so Settings and other UIKit applications do not load the Notifica tweak. |
-| Versioning | Package and preference-bundle metadata identify this compatibility release as `1.0.6`. |
+| Settings stability | Restricts tweak injection to SpringBoard so Settings and other UIKit applications do not load the Notifica tweak. The PreferenceBundle now uses system Preferences APIs and no longer links Cephei at page-load time. |
+| Versioning | Package and preference-bundle metadata identify this stability release as `1.0.7`. |
 
 ## Build
 

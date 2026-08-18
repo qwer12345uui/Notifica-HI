@@ -8,10 +8,6 @@
     self = [super init];
 
     if (self) {
-        HBAppearanceSettings *appearanceSettings = [[HBAppearanceSettings alloc] init];
-        // appearanceSettings.tintColor = [UIColor colorWithRed:0.1f green:0.1f blue:0.1f alpha:1];
-        appearanceSettings.tableViewCellSeparatorColor = [UIColor colorWithWhite:0 alpha:0];
-        self.hb_appearanceSettings = appearanceSettings;
         self.respringButton = [[UIBarButtonItem alloc] initWithTitle:@"Respring" 
                                     style:UIBarButtonItemStylePlain
                                     target:self 
@@ -49,7 +45,7 @@
 }
 
 - (void)resetPrefs:(id)sender {
-    HBPreferences *prefs = [[HBPreferences alloc] initWithIdentifier:BUNDLE_ID];
+    NSUserDefaults *prefs = NTFPreferencesStore();
     for (NSString *key in [prefs dictionaryRepresentation]) {
         if ([key isEqualToString:@"SavedSettings"] || [key isEqualToString:@"SelectedSettings"]) continue;
         [prefs removeObjectForKey:key];
@@ -71,7 +67,7 @@
 }
 
 -(void)removeSavedSettingsAtIndex:(int)i {
-    HBPreferences *prefs = [[HBPreferences alloc] initWithIdentifier:BUNDLE_ID];
+    NSUserDefaults *prefs = NTFPreferencesStore();
     
     NSMutableArray *savedSettings = nil;
 
@@ -86,7 +82,7 @@
 }
 
 -(void)renameSavedSettingsAtIndex:(int)i name:(NSString*)name {
-    HBPreferences *prefs = [[HBPreferences alloc] initWithIdentifier:BUNDLE_ID];
+    NSUserDefaults *prefs = NTFPreferencesStore();
     
     NSMutableArray *savedSettings = nil;
 
@@ -105,7 +101,7 @@
 -(NSDictionary*)dictionaryWithCurrentSettingsAndName:(NSString*)name {
     NSMutableDictionary *settingsToSave = [NSMutableDictionary new];
 
-    HBPreferences *prefs = [[HBPreferences alloc] initWithIdentifier:BUNDLE_ID];
+    NSUserDefaults *prefs = NTFPreferencesStore();
 
     settingsToSave[@"name"] = name;
 
@@ -145,7 +141,7 @@
 }
 
 -(void)copyX:(NSString *)x toY:(NSString *)y {
-    HBPreferences *file = [[HBPreferences alloc] initWithIdentifier:BUNDLE_ID];
+    NSUserDefaults *file = NTFPreferencesStore();
     for (NSString *key in [file dictionaryRepresentation]) {
         if (![key hasPrefix:y]) continue;
         [file removeObjectForKey:key];
@@ -191,7 +187,7 @@
 }
 
 -(void)restoreSettingsFromDictionary:(NSDictionary *)settings {
-    HBPreferences *file = [[HBPreferences alloc] initWithIdentifier:BUNDLE_ID];
+    NSUserDefaults *file = NTFPreferencesStore();
     for (NSString *key in [file dictionaryRepresentation]) {
         if ([key isEqualToString:@"SavedSettings"] || [key isEqualToString:@"SelectedSettings"]) continue;
         [file removeObjectForKey:key];
@@ -214,7 +210,7 @@
 }
 
 -(void)addDictionaryToSavedSettings:(NSDictionary *)dictionary {
-    HBPreferences *prefs = [[HBPreferences alloc] initWithIdentifier:BUNDLE_ID];
+    NSUserDefaults *prefs = NTFPreferencesStore();
 
     NSMutableArray *savedSettings = nil;
     if ([prefs objectForKey:@"SavedSettings"]) {

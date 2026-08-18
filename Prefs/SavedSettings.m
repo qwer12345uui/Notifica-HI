@@ -46,7 +46,7 @@
 }
 
 - (void)refreshList {
-    HBPreferences *file = [[HBPreferences alloc] initWithIdentifier:BUNDLE_ID];
+    NSUserDefaults *file = NTFPreferencesStore();
     self.savedSettings = [file objectForKey:@"SavedSettings"];
     self.selectedSettings = [([file objectForKey:@"SelectedSettings"] ?: @"") stringValue];
     [_tableView reloadData];

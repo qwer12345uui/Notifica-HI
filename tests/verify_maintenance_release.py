@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static verification for the Notifica 1.0.6 compatibility release."""
+"""Static verification for the Notifica 1.0.7 preferences stability release."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def main() -> None:
     require(info["CFBundleExecutable"] == "NotificaPrefs", "preference bundle executable is declared")
     require(info["NSPrincipalClass"] == "NTFPrefsListController", "preference bundle principal class is declared")
     require(info["CFBundleIdentifier"] == "com.rpgfarm.notifica.preferences", "preference bundle identifier is stable")
-    require(info["CFBundleShortVersionString"] == "1.0.6", "preference bundle version matches compatibility release")
+    require(info["CFBundleShortVersionString"] == "1.0.7", "preference bundle version matches stability release")
     require("bundle = NotificaPrefs;" in entry, "PreferenceLoader points to the preference bundle")
     require("detail = NTFPrefsListController;" in entry, "PreferenceLoader points to the main controller")
     require("isController = 1;" in entry, "PreferenceLoader marks the entry as a controller")
@@ -47,8 +47,20 @@ def main() -> None:
     for makefile in ("Tweak/Makefile", "Prefs/Makefile"):
         require("TARGET = iphone:clang:latest:15.0" in read(makefile), f"{makefile} targets iOS 15.0")
 
+    prefs_runtime = "\n".join([
+        read("Prefs/Makefile"),
+        read("Prefs/Preferences.h"),
+        read("Prefs/Preferences.m"),
+        read("Prefs/NTFSubPrefsListController.h"),
+        read("Prefs/SavedSettings.h"),
+        read("Prefs/SavedSettings.m"),
+    ])
+    require("Cephei" not in prefs_runtime, "preference bundle has no Cephei runtime dependency")
+    require("HBPreferences" not in prefs_runtime, "preference bundle uses system preference storage")
+    require("NTFPreferencesStore" in prefs_runtime, "preference bundle reads the existing Notifica preference domain")
+
     control = read("control")
-    require("Version: 1.0.6" in control, "package version matches compatibility release")
+    require("Version: 1.0.7" in control, "package version matches stability release")
 
     workflow = read(".github/workflows/build-notifica-rh.yml")
     require("THEOS_PACKAGE_SCHEME=roothide" in workflow, "workflow builds the RootHide package scheme")

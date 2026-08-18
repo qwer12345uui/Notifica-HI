@@ -1,16 +1,13 @@
 #import <Preferences/PSListController.h>
 #import <Preferences/PSSpecifier.h>
-#import <CepheiPrefs/HBListController.h>
-#import <CepheiPrefs/CepheiPrefs.h>
-#import <Cephei/HBPreferences.h>
 #import <spawn.h>
 
-@interface NTFSavedSettingsListController : PSViewController <UITableViewDelegate,UITableViewDataSource> {
+@interface NTFSavedSettingsListController : PSViewController <UITableViewDelegate, UITableViewDataSource> {
     UITableView *_tableView;
 }
 
-    @property (nonatomic, retain) UIBarButtonItem *importButton;
-    @property (nonatomic, retain) NSMutableArray *savedSettings;
-    @property (nonatomic, retain) NSString *selectedSettings;
-    - (void)refreshList;
+@property (nonatomic, strong) UIBarButtonItem *importButton;
+@property (nonatomic, strong) NSMutableArray *savedSettings;
+@property (nonatomic, strong) NSString *selectedSettings;
+- (void)refreshList;
 @end

@@ -8,13 +8,7 @@ $(BUNDLE_NAME)_FILES = Preferences.m SavedSettings.m NTFSubPrefsListController.m
 $(BUNDLE_NAME)_INSTALL_PATH = /Library/PreferenceBundles
 $(BUNDLE_NAME)_FRAMEWORKS = UIKit
 $(BUNDLE_NAME)_PRIVATE_FRAMEWORKS = Preferences
-$(BUNDLE_NAME)_EXTRA_FRAMEWORKS = Cephei CepheiPrefs
-$(BUNDLE_NAME)_LIBRARIES += colorpicker
 ADDITIONAL_OBJCFLAGS = -fobjc-arc -Wno-deprecated-declarations
-
-ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
-ADDITIONAL_LDFLAGS += -rpath '@loader_path/.jbroot/Library/Frameworks'
-endif
 
 include $(THEOS_MAKE_PATH)/bundle.mk
 
