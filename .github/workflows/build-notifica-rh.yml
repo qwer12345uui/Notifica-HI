@@ -1,0 +1,46 @@
+name: Build Notifica (RootHide)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      THEOS: ${{ github.workspace }}/theos
+      THEOS_PACKAGE_SCHEME: roothide
+      FINALPACKAGE: "1"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install RootHide Theos
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl git ldid make xz-utils
+          export THEOS="${THEOS}"
+          # `yes` exits on SIGPIPE when the installer finishes reading input; keep that expected exit from failing the step.
+          set +o pipefail
+          yes | bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"
+          set -o pipefail
+
+      - name: Build RootHide package
+        shell: bash
+        run: make clean package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Notifica-RootHide
+          path: packages/*.deb
+          if-no-files-found: error
