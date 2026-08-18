@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static verification for the Notifica 1.0.5 maintenance release."""
+"""Static verification for the Notifica 1.0.6 compatibility release."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def main() -> None:
     require(info["CFBundleExecutable"] == "NotificaPrefs", "preference bundle executable is declared")
     require(info["NSPrincipalClass"] == "NTFPrefsListController", "preference bundle principal class is declared")
     require(info["CFBundleIdentifier"] == "com.rpgfarm.notifica.preferences", "preference bundle identifier is stable")
-    require(info["CFBundleShortVersionString"] == "1.0.5", "preference bundle version matches maintenance release")
+    require(info["CFBundleShortVersionString"] == "1.0.6", "preference bundle version matches compatibility release")
     require("bundle = NotificaPrefs;" in entry, "PreferenceLoader points to the preference bundle")
     require("detail = NTFPrefsListController;" in entry, "PreferenceLoader points to the main controller")
     require("isController = 1;" in entry, "PreferenceLoader marks the entry as a controller")
@@ -48,7 +48,7 @@ def main() -> None:
         require("TARGET = iphone:clang:latest:15.0" in read(makefile), f"{makefile} targets iOS 15.0")
 
     control = read("control")
-    require("Version: 1.0.5" in control, "package version matches maintenance release")
+    require("Version: 1.0.6" in control, "package version matches compatibility release")
 
     workflow = read(".github/workflows/build-notifica-rh.yml")
     require("THEOS_PACKAGE_SCHEME=roothide" in workflow, "workflow builds the RootHide package scheme")
