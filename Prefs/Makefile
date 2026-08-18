@@ -12,6 +12,10 @@ $(BUNDLE_NAME)_EXTRA_FRAMEWORKS = Cephei CepheiPrefs
 $(BUNDLE_NAME)_LIBRARIES += colorpicker
 ADDITIONAL_OBJCFLAGS = -fobjc-arc -Wno-deprecated-declarations
 
+ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
+ADDITIONAL_LDFLAGS += -rpath '@loader_path/.jbroot/Library/Frameworks'
+endif
+
 include $(THEOS_MAKE_PATH)/bundle.mk
 
 internal-stage::

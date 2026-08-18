@@ -13,4 +13,8 @@ $(TWEAK_NAME)_EXTRA_FRAMEWORKS += Cephei
 $(TWEAK_NAME)_PRIVATE_FRAMEWORKS += MediaRemote
 ADDITIONAL_OBJCFLAGS = -fobjc-arc -Wno-deprecated-declarations
 
+ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
+ADDITIONAL_LDFLAGS += -rpath '@loader_path/.jbroot/Library/Frameworks'
+endif
+
 include $(THEOS_MAKE_PATH)/tweak.mk
