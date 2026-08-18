@@ -11,6 +11,6 @@ $(TWEAK_NAME)_FRAMEWORKS += QuartzCore MediaPlayer
 $(TWEAK_NAME)_LIBRARIES += colorpicker
 $(TWEAK_NAME)_EXTRA_FRAMEWORKS += Cephei
 $(TWEAK_NAME)_PRIVATE_FRAMEWORKS += MediaRemote
-ADDITIONAL_OBJCFLAGS = -fobjc-arc
+ADDITIONAL_OBJCFLAGS = -fobjc-arc -Wno-deprecated-declarations
 
 include $(THEOS_MAKE_PATH)/tweak.mk
