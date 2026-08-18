@@ -1,6 +1,5 @@
 #import <UIKit/UIKit.h>
-
-@class NEPPalette;
+#import "NEPPalette.h"
 
 @interface NEPColorUtils : NSObject
 + (BOOL)isDark:(UIColor *)color;

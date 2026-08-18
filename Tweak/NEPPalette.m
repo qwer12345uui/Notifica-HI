@@ -1,4 +1,4 @@
-#import <Nepeta/NEPPalette.h>
+#import "NEPPalette.h"
 
 
 @implementation NEPPalette

@@ -1,4 +1,4 @@
-#import <Nepeta/NEPColor.h>
+#import "NEPColor.h"
 
 @implementation NEPColor
     +(NEPColor *)fromLong:(unsigned long)color {

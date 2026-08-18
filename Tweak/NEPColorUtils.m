@@ -2,8 +2,8 @@
 MIT Licensed, original author: @jathu
 */
 
-#import <Nepeta/NEPColor.h>
-#import <Nepeta/NEPPalette.h>
+#import "NEPColor.h"
+#import "NEPPalette.h"
 #import "NEPColorUtils.h"
 
 
