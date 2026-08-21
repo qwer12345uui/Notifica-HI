@@ -1,0 +1,91 @@
+name: Build Notifica arm64e candidates (macOS)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Xcode arm64e build
+    runs-on: macos-14
+    env:
+      THEOS: ${{ github.workspace }}/theos
+      FINALPACKAGE: "1"
+
+    steps:
+      - name: Check out the manually selected migration branch
+        uses: actions/checkout@v4
+
+      - name: Show Xcode and source baseline
+        shell: bash
+        run: |
+          set -euxo pipefail
+          xcodebuild -version
+          xcode-select -p
+          git rev-parse HEAD
+
+      - name: Install RootHide Theos and pinned iPhoneOS SDK
+        shell: bash
+        run: |
+          set -euxo pipefail
+          brew install ldid xz
+          git clone --recursive --depth 1 https://github.com/roothide/theos.git "${THEOS}"
+          mkdir -p "${THEOS}/sdks"
+          curl -fsSL https://github.com/theos/sdks/releases/download/master-146e41f/iPhoneOS16.5.sdk.tar.xz \
+            | tar -xJ -C "${THEOS}/sdks"
+          test -f "${THEOS}/sdks/iPhoneOS16.5.sdk/System/Library/PrivateFrameworks/MediaRemote.framework/MediaRemote.tbd"
+
+      - name: Install Cephei SDK headers and libraries
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fsSL -o /tmp/cephei_sdk.zip \
+            https://github.com/hbang/libcephei/releases/download/2.0/cephei_sdk_2.0.zip
+          unzip -q /tmp/cephei_sdk.zip -d /tmp
+          cp -R /tmp/cephei_sdk_2.0/*.framework "${THEOS}/vendor/lib/iphone/rootless/"
+          cp -R /tmp/cephei_sdk_2.0/*.framework "${THEOS}/vendor/lib/iphone/roothide/"
+
+      - name: Build standard rootless candidate
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf packages .theos dist
+          mkdir -p dist
+          # Use Theos iPhoneOS 16.5 SDK, which contains the MediaRemote link stub required by the existing Now Playing code.
+          SDK_ROOT="${THEOS}/sdks/iPhoneOS16.5.sdk"
+          test -f "${SDK_ROOT}/System/Library/PrivateFrameworks/MediaRemote.framework/MediaRemote.tbd"
+          THEOS="${THEOS}" TARGET=iphone:clang:16.5:15.0 SYSROOT="${SDK_ROOT}" ISYSROOT="${SDK_ROOT}" make clean package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless 2>&1 | tee dist/build-rootless.log
+          deb=$(find packages -maxdepth 1 -type f -name '*.deb' -print -quit)
+          test -n "${deb}"
+          cp "${deb}" dist/Notifica_1.0.8_standard-rootless.deb
+          shasum -a 256 dist/Notifica_1.0.8_standard-rootless.deb > dist/Notifica_1.0.8_standard-rootless.deb.sha256
+
+      - name: Build RootHide candidate
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf packages .theos
+          SDK_ROOT="${THEOS}/sdks/iPhoneOS16.5.sdk"
+          test -f "${SDK_ROOT}/System/Library/PrivateFrameworks/MediaRemote.framework/MediaRemote.tbd"
+          THEOS="${THEOS}" TARGET=iphone:clang:16.5:15.0 SYSROOT="${SDK_ROOT}" ISYSROOT="${SDK_ROOT}" make clean package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide 2>&1 | tee dist/build-roothide.log
+          deb=$(find packages -maxdepth 1 -type f -name '*.deb' -print -quit)
+          test -n "${deb}"
+          cp "${deb}" dist/Notifica_1.0.8_roothide.deb
+          shasum -a 256 dist/Notifica_1.0.8_roothide.deb > dist/Notifica_1.0.8_roothide.deb.sha256
+
+      - name: Enforce arm64e warning gate
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ! grep -RinE 'incompatible arm64e ABI|error:' dist/build-*.log
+
+      - name: Upload test-only artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Notifica-macOS-arm64e-candidates
+          path: dist/
+          if-no-files-found: error

@@ -46,6 +46,8 @@ def main() -> None:
 
     for makefile in ("Tweak/Makefile", "Prefs/Makefile"):
         require("TARGET = iphone:clang:latest:15.0" in read(makefile), f"{makefile} targets iOS 15.0")
+    require("ADDITIONAL_OBJCCFLAGS = -std=c++11" in read("Tweak/Makefile"),
+            "Cephei Swift compatibility header is compiled as Objective-C++11")
 
     prefs_runtime = "\n".join([
         read("Prefs/Makefile"),
@@ -58,6 +60,26 @@ def main() -> None:
     require("Cephei" not in prefs_runtime, "preference bundle has no Cephei runtime dependency")
     require("HBPreferences" not in prefs_runtime, "preference bundle uses system preference storage")
     require("NTFPreferencesStore" in prefs_runtime, "preference bundle reads the existing Notifica preference domain")
+    saved_settings = read("Prefs/SavedSettings.m")
+    require("stringValue" not in saved_settings,
+            "Saved Settings never sends stringValue to the persisted selected-settings value")
+    require("[selectedSettings isKindOfClass:[NSString class]]" in saved_settings,
+            "Saved Settings accepts only a string selected-settings value")
+    require("[savedSettings isKindOfClass:[NSArray class]]" in saved_settings,
+            "Saved Settings recovers safely from a missing or malformed saved-settings array")
+    require("#import <roothide.h>" in prefs_runtime, "preference bundle imports RootHide path support")
+    require('jbroot(@"/usr/bin/killall")' in prefs_runtime,
+            "RootHide resolves the bootstrap killall path through jbroot")
+    require("ROOT_PATH_NS" not in prefs_runtime,
+            "RootHide Theos-incompatible rootless path macro is not used directly")
+    require('@"/var/jb' not in prefs_runtime and '@"/rootfs' not in prefs_runtime,
+            "preference bundle has no hard-coded jailbreak or rootfs path")
+    require('/Library/Frameworks/Alderis.framework/Alderis' not in tweak,
+            "unreachable Alderis path probe is removed")
+    require('/var/lib/dpkg/info/org.thebigboss.libcolorpicker.list' not in tweak,
+            "unreachable rootful package-database path probe is removed")
+    require("NotificaAlderis" not in tweak,
+            "unreachable Alderis Logos group is removed to satisfy current Theos validation")
 
     with (ROOT / "Prefs/Resources/Prefs.plist").open("rb") as stream:
         main_specifier_plist = plistlib.load(stream)

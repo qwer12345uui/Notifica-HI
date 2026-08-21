@@ -1,5 +1,6 @@
 #import "Preferences.h"
 #import "SavedSettings.h"
+#import <roothide.h>
 
 @implementation NTFPrefsListController
 @synthesize respringButton;
@@ -61,7 +62,8 @@
 
 - (void)respring:(id)sender {
     NSTask *t = [[NSTask alloc] init];
-    [t setLaunchPath:@"/usr/bin/killall"];
+    // RootHide resolves the randomized bootstrap; its non-RootHide stub resolves the standard rootless prefix.
+    [t setLaunchPath:jbroot(@"/usr/bin/killall")];
     [t setArguments:[NSArray arrayWithObjects:@"backboardd", nil]];
     [t launch];
 }

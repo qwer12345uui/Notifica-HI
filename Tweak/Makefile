@@ -12,6 +12,8 @@ $(TWEAK_NAME)_LIBRARIES += colorpicker
 $(TWEAK_NAME)_EXTRA_FRAMEWORKS += Cephei
 $(TWEAK_NAME)_PRIVATE_FRAMEWORKS += MediaRemote
 ADDITIONAL_OBJCFLAGS = -fobjc-arc -Wno-deprecated-declarations
+# Cephei 2.0's generated Swift compatibility header uses C++11 aliases; Tweak.xm is Objective-C++.
+ADDITIONAL_OBJCCFLAGS = -std=c++11
 
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
 ADDITIONAL_LDFLAGS += -rpath '@loader_path/.jbroot/Library/Frameworks'
