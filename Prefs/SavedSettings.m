@@ -47,8 +47,15 @@
 
 - (void)refreshList {
     NSUserDefaults *file = NTFPreferencesStore();
-    self.savedSettings = [file objectForKey:@"SavedSettings"];
-    self.selectedSettings = [([file objectForKey:@"SelectedSettings"] ?: @"") stringValue];
+    id savedSettings = [file objectForKey:@"SavedSettings"];
+    id selectedSettings = [file objectForKey:@"SelectedSettings"];
+
+    self.savedSettings = [savedSettings isKindOfClass:[NSArray class]]
+        ? [savedSettings mutableCopy]
+        : [NSMutableArray array];
+    self.selectedSettings = [selectedSettings isKindOfClass:[NSString class]]
+        ? selectedSettings
+        : @"";
     [_tableView reloadData];
 }
 
