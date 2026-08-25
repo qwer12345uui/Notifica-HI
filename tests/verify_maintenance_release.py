@@ -55,6 +55,8 @@ def main() -> None:
         require("TARGET = iphone:clang:latest:15.0" in makefile, f"{path} targets iOS 15.0")
         require("_LIBRARIES" in makefile and "root" in makefile, f"{path} declares a non-rootful path library")
 
+    require("-std=c++14" in tweak_makefile,
+            "tweak enables C++14 for the current Cephei module header")
     require("THEOS_PACKAGE_SCHEME),roothide" in tweak_makefile, "tweak retains a Roothide framework rpath")
     prefs_header = read("Prefs/Preferences.h")
     prefs_implementation = read("Prefs/Preferences.m")
