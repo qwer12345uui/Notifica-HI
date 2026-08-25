@@ -13,9 +13,9 @@ permissions:
 jobs:
   verify-and-build:
     name: ${{ matrix.display_name }}
-    # macOS/Xcode emits the iOS 14+ arm64e ABI required by the iOS 15
+    # Xcode on macOS emits the iOS 14+ arm64e ABI required by the iOS 15
     # Preferences process on A12-and-later hardware.
-    runs-on: macos-13
+    runs-on: macos-14
     strategy:
       fail-fast: false
       matrix:
@@ -43,35 +43,47 @@ jobs:
         run: |
           set -euxo pipefail
           xcodebuild -version
+          xcode-select -p
           xcrun --sdk iphoneos --find clang
-          xcrun --sdk iphoneos --show-sdk-path
 
-      - name: Install macOS build prerequisites
+      - name: Install RootHide Theos and pinned iPhoneOS SDK
         shell: bash
         run: |
           set -euxo pipefail
           brew install ldid xz
+          git clone --recursive --depth 1 https://github.com/roothide/theos.git "${THEOS}"
+          mkdir -p "${THEOS}/sdks"
+          curl -fsSL https://github.com/theos/sdks/releases/download/master-146e41f/iPhoneOS16.5.sdk.tar.xz \
+            | tar -xJ -C "${THEOS}/sdks"
+          test -f "${THEOS}/sdks/iPhoneOS16.5.sdk/System/Library/PrivateFrameworks/MediaRemote.framework/MediaRemote.tbd"
 
-      - name: Install Theos for selected package scheme
+      - name: Install Cephei SDK headers and libraries
         shell: bash
         run: |
           set -euxo pipefail
-          if [[ "${THEOS_PACKAGE_SCHEME}" == "roothide" ]]; then
-            git clone --recursive https://github.com/roothide/theos.git "${THEOS}"
-          else
-            git clone --recursive https://github.com/theos/theos.git "${THEOS}"
-          fi
-          "${THEOS}/bin/install-sdk" latest
+          curl -fsSL -o /tmp/cephei_sdk.zip \
+            https://github.com/hbang/libcephei/releases/download/2.0/cephei_sdk_2.0.zip
+          unzip -q /tmp/cephei_sdk.zip -d /tmp
+          cp -R /tmp/cephei_sdk_2.0/*.framework "${THEOS}/vendor/lib/iphone/rootless/"
+          cp -R /tmp/cephei_sdk_2.0/*.framework "${THEOS}/vendor/lib/iphone/roothide/"
 
       - name: Build selected package with Xcode arm64e ABI
         shell: bash
         run: |
           set -euxo pipefail
-          make clean package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=${{ matrix.scheme }}
+          SDK_ROOT="${THEOS}/sdks/iPhoneOS16.5.sdk"
+          THEOS="${THEOS}" TARGET=iphone:clang:16.5:15.0 SYSROOT="${SDK_ROOT}" ISYSROOT="${SDK_ROOT}" \
+            make clean package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=${{ matrix.scheme }}
 
       - name: Verify emitted DEB
         shell: bash
         run: bash tests/verify_package_layout.sh packages
+
+      - name: Reject old arm64e ABI toolchain output
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ! grep -RinE 'incompatible arm64e ABI|error:' .theos packages
 
       - name: Upload package
         uses: actions/upload-artifact@v4

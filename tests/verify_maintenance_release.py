@@ -89,7 +89,7 @@ def main() -> None:
     require("Version: 1.0.10" in control, "package version matches preferences compatibility release")
 
     workflow = read(".github/workflows/build-notifica-rh.yml")
-    require("runs-on: macos-13" in workflow, "workflow builds final arm64e bundles with macOS Xcode")
+    require("runs-on: macos-14" in workflow, "workflow builds final arm64e bundles with macOS Xcode")
     require("Confirm Xcode arm64e toolchain" in workflow,
             "workflow verifies the macOS arm64e build toolchain")
     require("rootless" in workflow, "workflow builds the standard rootless package scheme")
@@ -98,6 +98,8 @@ def main() -> None:
             "workflow passes each package scheme to Theos")
     require("verify_package_layout.sh packages" in workflow,
             "workflow validates each emitted DEB before upload")
+    require("Reject old arm64e ABI toolchain output" in workflow,
+            "workflow rejects old arm64e ABI toolchain output")
     require("actions/upload-artifact@v4" in workflow, "workflow uploads both generated packages")
 
 
