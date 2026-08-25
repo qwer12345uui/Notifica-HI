@@ -19,7 +19,6 @@ static NTFConfig *configDetails = nil;
 static NTFConfig *configNowPlaying = nil;
 static NTFConfig *configExperimental = nil;
 
-float version;
 
 static NSMutableDictionary *colorCache = [NSMutableDictionary new];
 static NSArray *notificationStyleBlacklist = @[
@@ -2615,25 +2614,36 @@ void NTFTestBanner() {
 
             if ([configDetails enabled]) %init(NotificaDetails);
             if ([configNowPlaying enabled]) %init(NotificaNowPlaying);
-            version = [[[UIDevice currentDevice] systemVersion] floatValue];
-            if(version >= 13) {
-              %init(Notifica_iOS13);
-              %init(NotificaNC_iOS13);
 
-              if ([configNotifications enabled] || [configBanners enabled]) %init(NotificaNotificationsBanners_iOS13);
-              if ([configNotifications enabled]) %init(NotificaNotifications_iOS13);
-              if ([configWidgets enabled] && version < 14) %init(NotificaWidgets_iOS13);
-              // if ([configDetails enabled]) %init(NotificaDetails);
-              // if ([configNowPlaying enabled]) %init(NotificaNowPlaying);
-            } else {
-              %init(Notifica);
-              %init(NotificaNC);
+            NSOperatingSystemVersion systemVersion = [NSProcessInfo processInfo].operatingSystemVersion;
+            if (systemVersion.majorVersion < 15 || systemVersion.majorVersion > 17) {
+                NSLog(@"[Notifica] iOS %ld is outside the supported 15–17 range", (long)systemVersion.majorVersion);
+                return;
+            }
 
-              if ([configNotifications enabled] || [configBanners enabled]) %init(NotificaNotificationsBanners);
-              if ([configNotifications enabled]) %init(NotificaNotifications);
-              if ([configWidgets enabled]) %init(NotificaWidgets);
-              // if ([configDetails enabled]) %init(NotificaDetails);
-              // if ([configNowPlaying enabled]) %init(NotificaNowPlaying);
+            // Logos requires every declared group to have an initialization site.
+            // The preceding range guard makes this legacy branch unreachable in
+            // this iOS 15–17 build; it preserves compile-time completeness only.
+            if (systemVersion.majorVersion <= 12) {
+                %init(Notifica);
+                %init(NotificaNC);
+                if ([configNotifications enabled] || [configBanners enabled]) %init(NotificaNotificationsBanners);
+                if ([configNotifications enabled]) %init(NotificaNotifications);
+                if ([configWidgets enabled]) %init(NotificaWidgets);
+            }
+
+            // The iOS 13 notification stack remains the compatible private UI
+            // surface for iOS 15–17. Initialise each optional group only after
+            // preferences have been loaded.
+            %init(Notifica_iOS13);
+            %init(NotificaNC_iOS13);
+            if ([configNotifications enabled] || [configBanners enabled]) %init(NotificaNotificationsBanners_iOS13);
+            if ([configNotifications enabled]) %init(NotificaNotifications_iOS13);
+
+            // Legacy Today widgets are absent on some iOS 15–17 builds. Avoid
+            // installing a hook for a class that is not present at runtime.
+            if ([configWidgets enabled] && NSClassFromString(@"WGWidgetPlatterView")) {
+                %init(NotificaWidgets_iOS13);
             }
         }
 

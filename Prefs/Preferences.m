@@ -60,10 +60,12 @@
 }
 
 - (void)respring:(id)sender {
-    NSTask *t = [[NSTask alloc] init];
-    [t setLaunchPath:@"/usr/bin/killall"];
-    [t setArguments:[NSArray arrayWithObjects:@"backboardd", nil]];
-    [t launch];
+    NSTask *task = [[NSTask alloc] init];
+    // killall belongs to the jailbreak installation, not the sealed root volume.
+    // libroot resolves this path for standard rootless and Roothide installs.
+    [task setLaunchPath:NTF_JB_PATH_NS(@"/usr/bin/killall")];
+    [task setArguments:@[@"backboardd"]];
+    [task launch];
 }
 
 -(void)removeSavedSettingsAtIndex:(int)i {

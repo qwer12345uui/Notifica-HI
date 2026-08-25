@@ -1,4 +1,4 @@
-name: Build Notifica (RootHide)
+name: Build Notifica (Rootless and Roothide)
 
 on:
   workflow_dispatch:
@@ -11,45 +11,71 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  verify-and-build:
+    name: ${{ matrix.display_name }}
+    # macOS/Xcode emits the iOS 14+ arm64e ABI required by the iOS 15
+    # Preferences process on A12-and-later hardware.
+    runs-on: macos-13
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scheme: rootless
+            display_name: Build standard rootless package
+            artifact_name: Notifica-rootless-iOS15-17
+          - scheme: roothide
+            display_name: Build Roothide hidden-root package
+            artifact_name: Notifica-Roothide-iOS15-17
     env:
       THEOS: ${{ github.workspace }}/theos
-      THEOS_PACKAGE_SCHEME: roothide
+      THEOS_PACKAGE_SCHEME: ${{ matrix.scheme }}
       FINALPACKAGE: "1"
 
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Install RootHide Theos
+      - name: Run static compatibility checks
+        run: python3 tests/verify_maintenance_release.py
+
+      - name: Confirm Xcode arm64e toolchain
         shell: bash
         run: |
           set -euxo pipefail
-          sudo apt-get update
-          sudo apt-get install -y curl git make unzip xz-utils
-          export THEOS="${THEOS}"
-          # `yes` exits on SIGPIPE when the installer finishes reading input; keep that expected exit from failing the step.
-          set +o pipefail
-          yes | bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"
-          set -o pipefail
+          xcodebuild -version
+          xcrun --sdk iphoneos --find clang
+          xcrun --sdk iphoneos --show-sdk-path
 
-      - name: Install Cephei SDK headers
+      - name: Install macOS build prerequisites
         shell: bash
         run: |
           set -euxo pipefail
-          curl -fsSL -o /tmp/cephei_sdk.zip \
-            https://github.com/hbang/libcephei/releases/download/2.0/cephei_sdk_2.0.zip
-          unzip -q /tmp/cephei_sdk.zip -d /tmp
-          cp -R /tmp/cephei_sdk_2.0/*.framework "${THEOS}/vendor/lib/iphone/roothide/"
+          brew install ldid xz
 
-      - name: Build RootHide package
+      - name: Install Theos for selected package scheme
         shell: bash
-        run: make clean package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide
+        run: |
+          set -euxo pipefail
+          if [[ "${THEOS_PACKAGE_SCHEME}" == "roothide" ]]; then
+            git clone --recursive https://github.com/roothide/theos.git "${THEOS}"
+          else
+            git clone --recursive https://github.com/theos/theos.git "${THEOS}"
+          fi
+          "${THEOS}/bin/install-sdk" latest
+
+      - name: Build selected package with Xcode arm64e ABI
+        shell: bash
+        run: |
+          set -euxo pipefail
+          make clean package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=${{ matrix.scheme }}
+
+      - name: Verify emitted DEB
+        shell: bash
+        run: bash tests/verify_package_layout.sh packages
 
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
-          name: Notifica-RootHide
+          name: ${{ matrix.artifact_name }}
           path: packages/*.deb
           if-no-files-found: error

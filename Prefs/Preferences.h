@@ -1,6 +1,13 @@
 #import <Foundation/Foundation.h>
 #import <Preferences/PSListController.h>
 #import <Preferences/PSSpecifier.h>
+#if defined(NTF_ROOTHIDE_BUILD)
+#import <roothide.h>
+#define NTF_JB_PATH_NS(path) jbroot(path)
+#else
+#import <rootless.h>
+#define NTF_JB_PATH_NS(path) ROOT_PATH_NS(path)
+#endif
 #import "NSTask.h"
 
 #define COLORS_PATH @"/var/mobile/Library/Preferences/me.nepeta.notifica-colors.plist"
