@@ -15,13 +15,14 @@ $(TWEAK_NAME)_PRIVATE_FRAMEWORKS += MediaRemote
 ADDITIONAL_OBJCFLAGS = -fobjc-arc -Wno-deprecated-declarations -std=c++14
 
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
-# Roothide resolves rootless path macros through libroothide and needs this
-# rpath to locate Cephei below the hidden jailbreak root.
+# Roothide schemes get no libroot from Theos; libroothide supplies jbroot().
+# The vendored Roothide Cephei stub already declares an install_name of
+# @loader_path/.jbroot/Library/Frameworks/Cephei.framework/Cephei, so the
+# framework resolves at runtime without an extra rpath.
 $(TWEAK_NAME)_LIBRARIES += roothide
-ADDITIONAL_LDFLAGS += -rpath '@loader_path/.jbroot/Library/Frameworks'
 else
-# Standard rootless uses libroot for ROOT_PATH_NS and related macros.
-$(TWEAK_NAME)_LIBRARIES += root
+# Standard rootless: Theos already injects -lroot, which provides ROOT_PATH_NS.
+# Adding it again here would duplicate the link directive.
 endif
 
 include $(THEOS_MAKE_PATH)/tweak.mk

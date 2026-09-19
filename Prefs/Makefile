@@ -12,9 +12,10 @@ ADDITIONAL_OBJCFLAGS = -fobjc-arc -Wno-deprecated-declarations
 
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
 ADDITIONAL_OBJCFLAGS += -DNTF_ROOTHIDE_BUILD=1
-$(BUNDLE_NAME)_LIBRARIES = roothide
+# libroothide supplies jbroot() for the hidden-root scheme.
+$(BUNDLE_NAME)_LIBRARIES += roothide
 else
-$(BUNDLE_NAME)_LIBRARIES = root
+# Standard rootless: Theos links libroot automatically for ROOT_PATH_NS.
 endif
 
 include $(THEOS_MAKE_PATH)/bundle.mk

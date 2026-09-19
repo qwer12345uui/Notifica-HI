@@ -7,15 +7,14 @@ on:
   pull_request:
     branches: [master]
 
-permissions:
-  contents: read
-
 jobs:
   verify-and-build:
     name: ${{ matrix.display_name }}
     # Xcode on macOS emits the iOS 14+ arm64e ABI required by the iOS 15
     # Preferences process on A12-and-later hardware.
     runs-on: macos-14
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -57,15 +56,24 @@ jobs:
             | tar -xJ -C "${THEOS}/sdks"
           test -f "${THEOS}/sdks/iPhoneOS16.5.sdk/System/Library/PrivateFrameworks/MediaRemote.framework/MediaRemote.tbd"
 
-      - name: Install Cephei SDK headers and libraries
+      - name: Confirm vendored RootHide SDK supplies Cephei and libcolorpicker
         shell: bash
         run: |
           set -euxo pipefail
-          curl -fsSL -o /tmp/cephei_sdk.zip \
-            https://github.com/hbang/libcephei/releases/download/2.0/cephei_sdk_2.0.zip
-          unzip -q /tmp/cephei_sdk.zip -d /tmp
-          cp -R /tmp/cephei_sdk_2.0/*.framework "${THEOS}/vendor/lib/iphone/rootless/"
-          cp -R /tmp/cephei_sdk_2.0/*.framework "${THEOS}/vendor/lib/iphone/roothide/"
+          # The RootHide Theos submodules already ship ABI-matched frameworks and
+          # .tbd stubs for the active scheme. Overwriting them with an unrelated
+          # upstream Cephei SDK breaks the arm64e link, so assert instead.
+          scheme_lib="${THEOS}/vendor/lib/iphone/${THEOS_PACKAGE_SCHEME}"
+          test -d "${scheme_lib}/Cephei.framework"
+          test -f "${scheme_lib}/libcolorpicker.tbd"
+          test -f "${THEOS}/vendor/include/libcolorpicker.h"
+          test -f "${THEOS}/vendor/include/roothide.h"
+          test -f "${THEOS}/vendor/include/rootless.h"
+          if [[ "${THEOS_PACKAGE_SCHEME}" == "roothide" ]]; then
+            test -f "${scheme_lib}/libroothide.tbd"
+          else
+            test -f "${scheme_lib}/libroot.a"
+          fi
 
       - name: Build selected package with Xcode arm64e ABI
         shell: bash
@@ -91,3 +99,32 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: packages/*.deb
           if-no-files-found: error
+
+  publish:
+    name: Publish DEB packages
+    needs: verify-and-build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Collect packages
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create release with both packages
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.10
+          name: Notifica 1.0.10 (iOS 15 rootless + Roothide)
+          body: |
+            Automated build of Notifica 1.0.10 for iOS 15.0.
+
+            - `Notifica-Roothide-iOS15-17.deb` — Roothide hidden-root scheme (`iphoneos-arm64e`)
+            - `Notifica-rootless-iOS15-17.deb` — standard rootless scheme (`iphoneos-arm64`)
+          files: dist/*.deb
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
