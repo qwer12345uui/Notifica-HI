@@ -12,9 +12,9 @@ The tweak customizes notifications, banners, widgets, and Now Playing controls. 
 | --- | --- |
 | Minimum deployment target | iOS 15.0 |
 | Primary target range | iOS 15.x through iOS 16.x |
-| Architectures | arm64 and arm64e |
-| Primary package scheme | RootHide (`THEOS_PACKAGE_SCHEME=roothide`) |
-| Normal package scheme | Supported; omit `THEOS_PACKAGE_SCHEME` |
+| Architectures | arm64 and arm64e (universal) |
+| Roothide package scheme | `THEOS_PACKAGE_SCHEME=roothide` — hidden root, `iphoneos-arm64e` |
+| Standard rootless package scheme | default scheme — `/var/jb`, `iphoneos-arm64` |
 
 > Private SpringBoard classes can change between iOS point releases. Test a feature on the intended device and iOS version before daily use. If a feature is ineffective on a specific iOS 16 release, disable that feature and report the device model, iOS version, and the affected setting instead of repeatedly forcing SpringBoard restarts.
 
@@ -24,25 +24,36 @@ The tweak customizes notifications, banners, widgets, and Now Playing controls. 
 | --- | --- |
 | RootHide startup | Activation no longer depends on a rootful `/var/lib/dpkg` package-list path. The tweak now respects only its `Enabled` preference. |
 | Preference bundle | Added `CFBundleExecutable`, `NSPrincipalClass`, a stable bundle identifier, and version metadata so Settings can load the main list controller. |
-| Build configuration | Updated the deployment target to iOS 15.0 and added a manually runnable RootHide build workflow. |
+| Build configuration | Deployment target raised to iOS 15.0, `-std=c++14` scoped to Logos sources only, and a workflow that builds both the Roothide and standard rootless schemes on every push. |
 | Settings stability | Restricts tweak injection to SpringBoard. The PreferenceBundle uses system Preferences APIs, has no Cephei runtime linkage, and its main page uses only native Preferences cells. |
-| Versioning | Package and preference-bundle metadata identify this native settings release as `1.0.8`. |
+| Versioning | Package and preference-bundle metadata identify this native settings release as `1.0.10`. |
 
 ## Build
 
-Install RootHide Theos following the [RootHide developer documentation][1]. Then build a RootHide package with:
+Install RootHide Theos following the [RootHide developer documentation][1], then build either scheme with:
 
 ```sh
+# Roothide, hidden root
 make clean package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide
-```
 
-For a normal package, run the same command without `THEOS_PACKAGE_SCHEME=roothide`:
-
-```sh
+# Standard rootless, installs under /var/jb
 make clean package FINALPACKAGE=1
 ```
 
-The **Build Notifica (RootHide)** workflow can also be started manually from the repository’s **Actions** page. It installs RootHide Theos, obtains the Cephei SDK, builds a RootHide package, and exposes the resulting `.deb` as a workflow artifact.
+Both variants compile as universal `arm64` + `arm64e` binaries against the iOS 16.5 SDK with a deployment target of iOS 15.0. No third-party SDK download is required: RootHide Theos already vendors ABI-matched `Cephei.framework`, `libcolorpicker` and `libroothide` for each scheme.
+
+## Continuous integration
+
+Every push to `master`, and any manual dispatch, runs the **Build Notifica (Rootless and Roothide)** workflow on `macos-14`. It builds both schemes in parallel, asserts the emitted `.deb` payload and linkage, and publishes the packages to the `v1.0.10` release:
+
+| Asset | Scheme | Architecture | Install root |
+| --- | --- | --- | --- |
+| `Notifica-rootless-iOS15-17.deb` | standard rootless | `iphoneos-arm64` | `/var/jb` |
+| `Notifica-Roothide-iOS15-17.deb` | Roothide hidden root | `iphoneos-arm64e` | hidden root, resolved through `@loader_path/.jbroot` |
+
+The two packages declare the same identifier (`com.rpgfarm.notifica`) and differ only in install root and architecture, so install just the one that matches your jailbreak.
+
+If a build fails, the workflow attaches the complete `make` output for both schemes as `build-<scheme>.log` to the `ci-failure` release, so the failure is diagnosable without an authenticated Actions session.
 
 ## Test matrix
 
