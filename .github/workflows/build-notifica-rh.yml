@@ -49,7 +49,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          brew install ldid xz
+          brew install ldid xz dpkg
           git clone --recursive --depth 1 https://github.com/roothide/theos.git "${THEOS}"
           mkdir -p "${THEOS}/sdks"
           curl -fsSL https://github.com/theos/sdks/releases/download/master-146e41f/iPhoneOS16.5.sdk.tar.xz \
@@ -103,13 +103,23 @@ jobs:
 
       - name: Verify emitted DEB
         shell: bash
-        run: bash tests/verify_package_layout.sh packages
+        run: |
+          set -euo pipefail
+          bash tests/verify_package_layout.sh packages 2>&1 | tee "verify-${{ matrix.scheme }}.log"
 
       - name: Reject old arm64e ABI toolchain output
         shell: bash
         run: |
           set -euxo pipefail
           ! grep -RinE 'incompatible arm64e ABI|error:' .theos packages
+
+      - name: Upload verification log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-log-${{ matrix.scheme }}
+          path: verify-*.log
+          if-no-files-found: ignore
 
       - name: Upload package
         uses: actions/upload-artifact@v4
