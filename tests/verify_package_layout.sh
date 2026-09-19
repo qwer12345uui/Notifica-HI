@@ -105,18 +105,22 @@ trap 'rm -rf "${workdir}"' EXIT
 
 unpack_deb "${deb}" "${workdir}"
 
-require_line '^Package: com[.]rpgfarm[.]notifica([[:space:]]|$)' "${workdir}/control" 'package identifier'
-require_line '^Version: 1[.]0[.]10([[:space:]]|$)' "${workdir}/control" 'package version'
-require_line "^Architecture: ${expected_arch}([[:space:]]|$)" "${workdir}/control" 'package architecture'
+require_line '^Package: com\.rpgfarm\.notifica$' "${workdir}/control" 'package identifier'
+require_line '^Version: 1\.0\.10$' "${workdir}/control" 'package version'
+require_line "^Architecture: ${expected_arch}$" "${workdir}/control" 'package architecture'
 
-# The payload listing is `tar -tf`-style: the path sits in the last field, so it
-# starts after whitespace rather than at column 0 or after a slash. Anchor on
-# whitespace on both ends so archives that store `./Library/...` still match.
-require_line "(^|[[:space:]])${expected_prefix}/MobileSubstrate/DynamicLibraries/Notifica[.]dylib([[:space:]]|$)" \
+# A payload line from `dpkg-deb --contents` looks like
+#   "-rwxr-xr-x root/wheel 372640 2026-09-19 18:31 var/jb/Library/…"
+# so the path is preceded by whitespace, not by a slash. Anchoring only on "/"
+# (or start-of-line) misses every member whose path lacks a "./" prefix, which
+# silently fails the assertion even though the payload is correct. Accept
+# whitespace, a slash, or start-of-line: the latter two cover the "./"-prefixed
+# form and paths nested under a jailbreak root such as var/jb/Library.
+require_line "(^|[[:space:]/])${expected_prefix}/MobileSubstrate/DynamicLibraries/Notifica\\.dylib\$" \
   "${workdir}/contents" 'tweak dylib payload path'
-require_line "(^|[[:space:]])${expected_prefix}/PreferenceBundles/NotificaPrefs[.]bundle/NotificaPrefs([[:space:]]|$)" \
+require_line "(^|[[:space:]/])${expected_prefix}/PreferenceBundles/NotificaPrefs\\.bundle/NotificaPrefs\$" \
   "${workdir}/contents" 'preferences bundle payload path'
-require_line '(^|[[:space:]])Library/PreferenceLoader/Preferences/NotificaPrefs[.]plist([[:space:]]|$)' \
+require_line '(^|[[:space:]/])Library/PreferenceLoader/Preferences/NotificaPrefs\.plist$' \
   "${workdir}/contents" 'preference loader entry plist'
 
 tweak="${workdir}/payload/${expected_prefix}/MobileSubstrate/DynamicLibraries/Notifica.dylib"
@@ -130,12 +134,12 @@ done
 
 "${otool_bin}" -L "${tweak}" > "${workdir}/tweak-linkage"
 if [[ "${scheme}" == "roothide" ]]; then
-  require_line 'libroothide[.]dylib' "${workdir}/tweak-linkage" 'libroothide linkage'
-  require_line '@loader_path/[.]jbroot/Library/Frameworks/Cephei[.]framework/Cephei' \
+  require_line 'libroothide\.dylib' "${workdir}/tweak-linkage" 'libroothide linkage'
+  require_line '@loader_path/\.jbroot/Library/Frameworks/Cephei\.framework/Cephei' \
     "${workdir}/tweak-linkage" 'jbroot-relative Cephei linkage'
 else
   # Standard rootless links libroot statically; Cephei remains an @rpath framework.
-  require_line '@rpath/Cephei[.]framework/Cephei' "${workdir}/tweak-linkage" 'Cephei linkage'
+  require_line '@rpath/Cephei\.framework/Cephei' "${workdir}/tweak-linkage" 'Cephei linkage'
 fi
 
 echo "PASS: ${scheme} package metadata, payload layout, universal binaries, and dependency paths are valid"
