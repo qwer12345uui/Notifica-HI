@@ -2,8 +2,8 @@ name: Publish unstripped debug symbols
 
 # SpringBoard crash reports only carry <image>+<offset> for Notifica.dylib, and
 # the shipped tweak is stripped, so those offsets cannot be symbolicated. Build
-the same package with DEBUG=1 (which skips the strip step) and publish the
-resulting dylib so a real .ips can be resolved.
+# the same package with DEBUG=1 (which skips the strip step) and publish the
+# resulting dylib so a real .ips can be resolved.
 #
 # The push path is this file itself: committing it triggers the run without
 # having to reach for the workflow_dispatch API.
@@ -28,6 +28,14 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Harden iOS 15 private-API access
+        shell: bash
+        run: |
+          set -euxo pipefail
+          # Keep these symbols in step with the package that ships: the build
+          # workflow applies the same pass before it compiles.
+          python3 tools/apply_ios15_private_api_fix.py
+
       - name: Install RootHide Theos and pinned iPhoneOS SDK
         shell: bash
         run: |
@@ -46,12 +54,19 @@ jobs:
           THEOS="${THEOS}" TARGET=iphone:clang:16.5:15.0 SYSROOT="${SDK_ROOT}" ISYSROOT="${SDK_ROOT}" \
             make clean package FINALPACKAGE=1 DEBUG=1 THEOS_PACKAGE_SCHEME=roothide 2>&1 | tee build-debug.log
 
-      - name: Show what was produced
+      - name: Collect the unstripped binary
         shell: bash
         run: |
-          set -euo pipefail
-          ls -la .theos/obj/ 2>/dev/null || true
-          find .theos -name '*.dylib' -o -name '*.dSYM' | head -20
+          set -euxo pipefail
+          # Theos writes the unstripped dylib somewhere under .theos/obj; the
+          # exact path is an implementation detail that has already moved once.
+          # Discover it, then publish under a stable name.
+          dylib=$(find .theos -type f \( -name 'Notifica.dylib' -o -name 'Notifica*.dylib' \) | head -n 1)
+          test -n "${dylib}" || { echo 'no Notifica dylib found under .theos'; find .theos -maxdepth 3 | head -40; exit 1; }
+          echo "found ${dylib}"
+          cp "${dylib}" Notifica-debug-arm64e.dylib
+          # DEBUG=1 skips the strip step; prove local symbols survived.
+          nm -arch arm64e Notifica-debug-arm64e.dylib | grep -c ' t \| T '
 
       - name: Publish unstripped dylib
         uses: softprops/action-gh-release@v2
@@ -63,8 +78,13 @@ jobs:
             symbols survive and `Notifica.dylib` frame offsets in an `.ips` can
             be resolved.
 
+            Symbolicate with:
+
+                atos -arch arm64e -o Notifica-debug-arm64e.dylib \
+                     -l <Notifica.dylib base from the .ips> <frame address>
+
             - `Notifica-debug-arm64e.dylib` — merged FAT binary, unstripped
-          files: .theos/obj/Notifica.dylib
+          files: Notifica-debug-arm64e.dylib
           fail_on_unmatched_files: true
           overwrite_files: true
         env:
