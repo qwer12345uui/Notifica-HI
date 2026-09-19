@@ -35,36 +35,106 @@ if [[ ${#packages[@]} -ne 1 ]]; then
   exit 1
 fi
 
+# macOS has no dpkg-deb. A .deb is just an `ar` archive holding control.tar.*
+# and data.tar.*, so fall back to ar + tar when the Debian tooling is absent.
+dpkg_deb_bin="$(command -v dpkg-deb || true)"
+
+die() { echo "FAIL: $*" >&2; exit 1; }
+
+# Print the haystack alongside the needle whenever an assertion fails; a bare
+# non-zero grep tells you nothing in a CI log.
+require_line() {
+  local pattern="$1" haystack="$2" what="$3"
+  if grep -qE "${pattern}" "${haystack}"; then
+    return 0
+  fi
+  echo "FAIL: ${what} — no line matching ${pattern} in ${haystack}" >&2
+  sed 's/^/    | /' "${haystack}" >&2
+  exit 1
+}
+
+unpack_deb() {
+  local deb="$1" dir="$2"
+  mkdir -p "${dir}/payload" "${dir}/control_dir"
+
+  if [[ -n "${dpkg_deb_bin}" ]]; then
+    "${dpkg_deb_bin}" --extract "${deb}" "${dir}/payload"
+    "${dpkg_deb_bin}" --control "${deb}" "${dir}/control_dir"
+    "${dpkg_deb_bin}" --field "${deb}" > "${dir}/control"
+    "${dpkg_deb_bin}" --contents "${deb}" > "${dir}/contents"
+    return 0
+  fi
+
+  local ardir="${dir}/ar"
+  mkdir -p "${ardir}"
+  (cd "${ardir}" && ar -x "${deb}") || die "cannot unpack ${deb} with ar"
+
+  local control_member="" data_member=""
+  for candidate in "${ardir}"/control.tar.*; do
+    [[ -f "${candidate}" ]] || continue
+    control_member="${candidate}"
+    break
+  done
+  for candidate in "${ardir}"/data.tar.*; do
+    [[ -f "${candidate}" ]] || continue
+    data_member="${candidate}"
+    break
+  done
+  [[ -n "${control_member}" ]] || die "${deb} has no control.tar.* member"
+  [[ -n "${data_member}" ]] || die "${deb} has no data.tar.* member"
+
+  tar -xf "${control_member}" -C "${dir}/control_dir"
+  tar -xf "${data_member}" -C "${dir}/payload"
+  tar -tf "${data_member}" > "${dir}/contents"
+
+  if [[ -f "${dir}/control_dir/control" ]]; then
+    cat "${dir}/control_dir/control" > "${dir}/control"
+  else
+    for candidate in "${dir}/control_dir"/control*; do
+      [[ -f "${candidate}" ]] || continue
+      cat "${candidate}" > "${dir}/control"
+      break
+    done
+  fi
+  [[ -s "${dir}/control" ]] || die "${deb} has no control file"
+}
+
 deb="${packages[0]}"
 workdir="$(mktemp -d)"
 trap 'rm -rf "${workdir}"' EXIT
 
-dpkg-deb --field "${deb}" Package Version Architecture > "${workdir}/control"
-grep -qx 'Package: com.rpgfarm.notifica' "${workdir}/control"
-grep -qx 'Version: 1.0.10' "${workdir}/control"
-grep -qx "Architecture: ${expected_arch}" "${workdir}/control"
+unpack_deb "${deb}" "${workdir}"
 
-dpkg-deb --contents "${deb}" > "${workdir}/contents"
-grep -q " ${expected_prefix}/MobileSubstrate/DynamicLibraries/Notifica.dylib$" "${workdir}/contents"
-grep -q " ${expected_prefix}/PreferenceBundles/NotificaPrefs.bundle/NotificaPrefs$" "${workdir}/contents"
-grep -q 'Library/PreferenceLoader/Preferences/NotificaPrefs.plist$' "${workdir}/contents"
+require_line '^Package: com\.rpgfarm\.notifica$' "${workdir}/control" 'package identifier'
+require_line '^Version: 1\.0\.10$' "${workdir}/control" 'package version'
+require_line "^Architecture: ${expected_arch}$" "${workdir}/control" 'package architecture'
 
-dpkg-deb --extract "${deb}" "${workdir}/payload"
+# Theos/dm.pl stores members as ./Library/..., so anchor on a slash rather than
+# requiring the path to start right after a space.
+require_line "(^|/)${expected_prefix}/MobileSubstrate/DynamicLibraries/Notifica\\.dylib\$" \
+  "${workdir}/contents" 'tweak dylib payload path'
+require_line "(^|/)${expected_prefix}/PreferenceBundles/NotificaPrefs\\.bundle/NotificaPrefs\$" \
+  "${workdir}/contents" 'preferences bundle payload path'
+require_line '(^|/)Library/PreferenceLoader/Preferences/NotificaPrefs\.plist$' \
+  "${workdir}/contents" 'preference loader entry plist'
+
 tweak="${workdir}/payload/${expected_prefix}/MobileSubstrate/DynamicLibraries/Notifica.dylib"
 prefs="${workdir}/payload/${expected_prefix}/PreferenceBundles/NotificaPrefs.bundle/NotificaPrefs"
 
 for binary in "${tweak}" "${prefs}"; do
-  file "${binary}" | grep -q 'arm64'
-  file "${binary}" | grep -q 'arm64e'
+  [[ -f "${binary}" ]] || die "missing payload binary: ${binary}"
+  file "${binary}" | grep -q 'arm64' || die "${binary} has no arm64 slice"
+  file "${binary}" | grep -q 'arm64e' || die "${binary} has no arm64e slice"
 done
 
 "${otool_bin}" -L "${tweak}" > "${workdir}/tweak-linkage"
 if [[ "${scheme}" == "roothide" ]]; then
-  grep -q 'libroothide.dylib' "${workdir}/tweak-linkage"
-  grep -q '@loader_path/.jbroot/Library/Frameworks/Cephei.framework/Cephei' "${workdir}/tweak-linkage"
+  require_line 'libroothide\.dylib' "${workdir}/tweak-linkage" 'libroothide linkage'
+  require_line '@loader_path/\.jbroot/Library/Frameworks/Cephei\.framework/Cephei' \
+    "${workdir}/tweak-linkage" 'jbroot-relative Cephei linkage'
 else
   # Standard rootless links libroot statically; Cephei remains an @rpath framework.
-  grep -q '@rpath/Cephei.framework/Cephei' "${workdir}/tweak-linkage"
+  require_line '@rpath/Cephei\.framework/Cephei' "${workdir}/tweak-linkage" 'Cephei linkage'
 fi
 
 echo "PASS: ${scheme} package metadata, payload layout, universal binaries, and dependency paths are valid"
