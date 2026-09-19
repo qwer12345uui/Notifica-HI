@@ -34,6 +34,17 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Harden iOS 15 private-API access
+        shell: bash
+        run: |
+          set -euxo pipefail
+          # Fixes SpringBoard-2026-09-20-033909.ips: the hooked
+          # -[NCNotificationShortLookView layoutSubviews] sent
+          # -_headerContentView, which iOS 15 dropped while keeping the ivar,
+          # and the uncaught NSInvalidArgumentException aborted SpringBoard.
+          # The pass is idempotent, so a hardened Tweak.xm is left untouched.
+          python3 tools/apply_ios15_private_api_fix.py
+
       - name: Run static compatibility checks
         run: python3 tests/verify_maintenance_release.py
 
