@@ -173,15 +173,29 @@ jobs:
           # Assets from runs before the rename kept the name dm.pl generated,
           # so the release accumulated look-alike packages that are easy to
           # install by mistake. Clear whatever is attached now and let the
-          # publish step upload exactly the two scheme-named DEBs. Best effort:
-          # a missing release or a token without asset rights must not stop
-          # this build from publishing.
-          gh release view v1.0.10 --json assets --jq -r '.assets[].name' > stale.txt 2>/dev/null || exit 0
-          while IFS= read -r asset; do
-            [[ -n "${asset}" ]] || continue
-            echo "removing stale asset: ${asset}"
-            gh release delete-asset v1.0.10 "${asset}" --yes
-          done < stale.txt
+          # publish step upload exactly the two scheme-named DEBs.
+          #
+          # This job never checks the repository out, so address the API with
+          # an explicit owner/repo instead of asking gh to infer one; without
+          # that context gh fails to resolve a repository and the cleanup
+          # silently does nothing.
+          repo="${{ github.repository }}"
+          release="https://api.github.com/repos/${repo}/releases/tags/v1.0.10"
+          auth=(-H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json")
+          assets=$(curl -sSf "${auth[@]}" "${release}" \
+            | python3 -c 'import sys, json; [print(a["id"], a["name"]) for a in json.load(sys.stdin).get("assets", [])]') || {
+            echo "could not read release v1.0.10; leaving its assets untouched"
+            exit 0
+          }
+          if [[ -z "${assets}" ]]; then
+            echo "release v1.0.10 has no assets"
+            exit 0
+          fi
+          while read -r id name; do
+            status=$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE "${auth[@]}" \
+              "https://api.github.com/repos/${repo}/releases/assets/${id}")
+            echo "removed stale asset ${name}: HTTP ${status}"
+          done <<< "${assets}"
 
       - name: Publish DEB packages
         if: needs.verify-and-build.result == 'success'
