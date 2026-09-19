@@ -1,4 +1,4 @@
-# Notifica 1.0.9：iOS 15–17 真机回归测试清单
+# Notifica 1.0.10：iOS 15–17 真机回归测试清单
 
 ## 验证范围与当前状态
 
@@ -8,7 +8,7 @@
 
 | 项目 | 标准无根 | Roothide 隐根 | 自动化状态 | 真机状态 |
 | --- | --- | --- | --- | --- |
-| DEB 控制字段与版本 1.0.9 | 已生成 | 已生成 | 已通过 | 待执行 |
+| DEB 控制字段与版本 1.0.10 | 已生成 | 已生成 | 已通过 | 待执行 |
 | 标准无根 `/var/jb` 前缀 | 已验证 | 不适用 | 已通过 | 待执行 |
 | Roothide `.jbroot` 动态路径 | 不适用 | 已验证 | 已通过 | 待执行 |
 | `arm64` 与 `arm64e` 切片 | 已验证 | 已验证 | 已通过 | 待执行 |
@@ -16,14 +16,14 @@
 
 ## 安装前检查
 
-请只安装与当前越狱方案一致的一个包。标准无根环境应安装 `Notifica_1.0.9_rootless_iOS15-17.deb`；Roothide 环境应安装 `Notifica_1.0.9_Roothide_iOS15-17.deb`。不要在同一设备上混装两份包，也不要覆盖仍在使用的传统有根 Notifica 安装。
+请只安装与当前越狱方案一致的一个包。标准无根环境应安装 `Notifica-rootless-iOS15-17.deb`；Roothide 环境应安装 `Notifica-Roothide-iOS15-17.deb`。两份包均由仓库的 **Build Notifica (Rootless and Roothide)** 工作流在每次推送到 `master` 时自动构建，并发布在 `v1.0.10` release 中；下载时请确认文件名与方案一致，不要使用包管理器缓存里的旧版本。不要在同一设备上混装两份包，也不要覆盖仍在使用的传统有根 Notifica 安装。
 
 两种方案均要求现有依赖能够满足包控制字段：注入加载器、`org.thebigboss.libcolorpicker (>= 1.6.9)` 与 `ws.hbang.common (>= 1.11)`。先在包管理器中刷新源和依赖，再安装本包。标准无根 Theos 会使用 `libroot` 对越狱安装区路径进行前缀解析；Roothide 版本使用官方 `jbroot` API 和 `libroothide` 运行时路径。[1] [2]
 
 | 环境 | 应安装文件 | 必做的安装后操作 | 不应安装 |
 | --- | --- | --- | --- |
-| 标准无根 | `Notifica_1.0.9_rootless_iOS15-17.deb` | 在包管理器完成依赖安装后重启界面 | Roothide 包、传统有根包 |
-| Roothide 隐根 | `Notifica_1.0.9_Roothide_iOS15-17.deb` | 在 Roothide 对应包管理器完成安装后重启界面 | 标准无根包、传统有根包 |
+| 标准无根 | `Notifica-rootless-iOS15-17.deb` | 在包管理器完成依赖安装后重启界面 | Roothide 包、传统有根包 |
+| Roothide 隐根 | `Notifica-Roothide-iOS15-17.deb` | 在 Roothide 对应包管理器完成安装后重启界面 | 标准无根包、传统有根包 |
 
 ## 每台设备的回归步骤
 
