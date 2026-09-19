@@ -111,7 +111,12 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          ! grep -RinE 'incompatible arm64e ABI|error:' .theos packages
+          # Scan the captured make output rather than the built tree. Every
+          # Objective-C binary stores selector names as literal C strings in
+          # __objc_methname, so `error:` shows up inside Notifica.dylib,
+          # NotificaPrefs and the .deb even on a flawless build; grepping the
+          # tree recursively used to fail the job with no diagnostic at all.
+          ! grep -nE 'incompatible arm64e ABI|(^|[[:space:]])error:' "build-${{ matrix.scheme }}.log"
 
       - name: Upload verification log
         if: always()
