@@ -78,10 +78,28 @@ jobs:
       - name: Build selected package with Xcode arm64e ABI
         shell: bash
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           SDK_ROOT="${THEOS}/sdks/iPhoneOS16.5.sdk"
+          LOG="build-${{ matrix.scheme }}.log"
+          {
+            echo "=== scheme: ${{ matrix.scheme }} ==="
+            echo "=== theos HEAD: $(git -C "${THEOS}" rev-parse --short HEAD 2>/dev/null || echo unknown) ==="
+            echo "=== vendored libraries for scheme ==="
+            ls -1 "${THEOS}/vendor/lib/iphone/${{ matrix.scheme }}" || true
+            echo "=== make output ==="
+          } > "${LOG}"
+          # Capture the full make output so a failing build is diagnosable
+          # without access to the authenticated Actions log viewer.
           THEOS="${THEOS}" TARGET=iphone:clang:16.5:15.0 SYSROOT="${SDK_ROOT}" ISYSROOT="${SDK_ROOT}" \
-            make clean package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=${{ matrix.scheme }}
+            make clean package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=${{ matrix.scheme }} >> "${LOG}" 2>&1
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ matrix.scheme }}
+          path: build-*.log
+          if-no-files-found: ignore
 
       - name: Verify emitted DEB
         shell: bash
@@ -101,20 +119,24 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Publish DEB packages
+    name: Publish build output
     needs: verify-and-build
-    if: github.event_name != 'pull_request'
+    if: always() && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Collect packages
+      - name: Collect build output
         uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
 
-      - name: Create release with both packages
+      - name: List collected files
+        run: ls -R dist
+
+      - name: Publish DEB packages
+        if: needs.verify-and-build.result == 'success'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.10
@@ -126,5 +148,21 @@ jobs:
             - `Notifica-rootless-iOS15-17.deb` — standard rootless scheme (`iphoneos-arm64`)
           files: dist/*.deb
           fail_on_unmatched_files: true
+          overwrite_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish build logs on failure
+        if: needs.verify-and-build.result != 'success'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ci-failure
+          name: CI diagnostics (most recent failed build)
+          body: |
+            The build failed. The attached `build-<scheme>.log` files contain the
+            complete `make` output for both package schemes.
+          files: dist/*.log
+          fail_on_unmatched_files: true
+          overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
