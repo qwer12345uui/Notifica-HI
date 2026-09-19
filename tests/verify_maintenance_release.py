@@ -55,9 +55,19 @@ def main() -> None:
         require("TARGET = iphone:clang:latest:15.0" in makefile, f"{path} targets iOS 15.0")
         require("_LIBRARIES" in makefile and "root" in makefile, f"{path} declares a non-rootful path library")
 
-    require("-std=c++14" in tweak_makefile,
-            "tweak enables C++14 for the current Cephei module header")
-    require("THEOS_PACKAGE_SCHEME),roothide" in tweak_makefile, "tweak retains a Roothide framework rpath")
+    require("-fobjc-arc" in tweak_makefile,
+            "tweak compiles its Objective-C sources with ARC")
+    # A C++ -std flag placed in ADDITIONAL_OBJCFLAGS breaks every plain .m file,
+    # because clang compiles those as Objective-C and rejects the flag outright.
+    # Logos .xm files compile as Objective-C++, so C++ flags belong in
+    # ADDITIONAL_OBJCCFLAGS alone.
+    objcflags_lines = [line for line in tweak_makefile.splitlines()
+                       if line.strip().startswith("ADDITIONAL_OBJCFLAGS")]
+    require(objcflags_lines and all("-std=c++" not in line for line in objcflags_lines),
+            "tweak does not force a C++ standard onto Objective-C sources")
+    require("ADDITIONAL_OBJCCFLAGS" in tweak_makefile and "-std=c++14" in tweak_makefile,
+            "C++14 for the Cephei module is scoped to Objective-C++ logos sources")
+    require("THEOS_PACKAGE_SCHEME),roothide" in tweak_makefile, "tweak branches on the Roothide package scheme")
     prefs_header = read("Prefs/Preferences.h")
     prefs_implementation = read("Prefs/Preferences.m")
     require("#import <rootless.h>" in prefs_header, "preferences retain standard rootless path macros")

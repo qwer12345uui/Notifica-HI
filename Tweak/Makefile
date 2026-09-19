@@ -11,8 +11,12 @@ $(TWEAK_NAME)_FRAMEWORKS += QuartzCore MediaPlayer
 $(TWEAK_NAME)_LIBRARIES += colorpicker
 $(TWEAK_NAME)_EXTRA_FRAMEWORKS += Cephei
 $(TWEAK_NAME)_PRIVATE_FRAMEWORKS += MediaRemote
-# Cephei 2 exports C++ `using` aliases through its module header on current Xcode.
-ADDITIONAL_OBJCFLAGS = -fobjc-arc -Wno-deprecated-declarations -std=c++14
+ADDITIONAL_OBJCFLAGS = -fobjc-arc -Wno-deprecated-declarations
+# Logos .xm sources are compiled as Objective-C++ and need a newer C++ standard
+# than the toolchain default to parse Cephei's module. This must stay out of
+# ADDITIONAL_OBJCFLAGS: plain .m files compile as Objective-C, and clang rejects
+# a C++ -std flag there with "not allowed with 'Objective-C'".
+ADDITIONAL_OBJCCFLAGS = -std=c++14
 
 ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
 # Roothide schemes get no libroot from Theos; libroothide supplies jbroot().
