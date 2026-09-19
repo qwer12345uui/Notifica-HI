@@ -126,6 +126,19 @@ jobs:
           path: verify-*.log
           if-no-files-found: ignore
 
+      - name: Name the DEB after the scheme it was built for
+        shell: bash
+        run: |
+          set -euo pipefail
+          # dm.pl names the package after the identifier and architecture
+          # (com.rpgfarm.notifica_1.0.10_iphoneos-arm64.deb), which says nothing
+          # about the jailbreak scheme. Rename it to the advertised asset name so
+          # the download link in the release notes actually resolves.
+          deb=$(ls -1 packages/*.deb | head -n 1)
+          mv "${deb}" "packages/${{ matrix.artifact_name }}.deb"
+          echo "renamed: ${deb} -> packages/${{ matrix.artifact_name }}.deb"
+          ls -l packages
+
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
@@ -157,10 +170,18 @@ jobs:
           tag_name: v1.0.10
           name: Notifica 1.0.10 (iOS 15 rootless + Roothide)
           body: |
-            Automated build of Notifica 1.0.10 for iOS 15.0.
+            Automated build of Notifica 1.0.10 for iOS 15.0. Both packages are
+            universal (arm64 + arm64e) and were compiled with Xcode against the
+            iOS 16.5 SDK with a deployment target of iOS 15.0.
 
-            - `Notifica-Roothide-iOS15-17.deb` — Roothide hidden-root scheme (`iphoneos-arm64e`)
-            - `Notifica-rootless-iOS15-17.deb` — standard rootless scheme (`iphoneos-arm64`)
+            - `Notifica-Roothide-iOS15-17.deb` — Roothide hidden-root scheme
+              (`iphoneos-arm64e`); payload installs under the hidden root and
+              resolves dependencies through `@loader_path/.jbroot/...`
+            - `Notifica-rootless-iOS15-17.deb` — standard rootless scheme
+              (`iphoneos-arm64`); payload installs under `/var/jb`
+
+            Do not install both: they ship the same `com.rpgfarm.notifica`
+            identifier and differ only in install root and architecture.
           files: dist/*.deb
           fail_on_unmatched_files: true
           overwrite_files: true
