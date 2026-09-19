@@ -163,6 +163,26 @@ jobs:
       - name: List collected files
         run: ls -R dist
 
+      - name: Remove stale assets from the release
+        if: needs.verify-and-build.result == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Assets from runs before the rename kept the name dm.pl generated,
+          # so the release accumulated look-alike packages that are easy to
+          # install by mistake. Clear whatever is attached now and let the
+          # publish step upload exactly the two scheme-named DEBs. Best effort:
+          # a missing release or a token without asset rights must not stop
+          # this build from publishing.
+          gh release view v1.0.10 --json assets --jq -r '.assets[].name' > stale.txt 2>/dev/null || exit 0
+          while IFS= read -r asset; do
+            [[ -n "${asset}" ]] || continue
+            echo "removing stale asset: ${asset}"
+            gh release delete-asset v1.0.10 "${asset}" --yes
+          done < stale.txt
+
       - name: Publish DEB packages
         if: needs.verify-and-build.result == 'success'
         uses: softprops/action-gh-release@v2
